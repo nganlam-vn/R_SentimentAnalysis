@@ -1,0 +1,71 @@
+```{r}
+# Tải các thư viện
+library(wordcloud)
+library(tm)
+library(RColorBrewer)
+library(wordcloud2)
+library(textstem)
+```
+
+
+```{r}
+
+data <- read.csv("./course_data_clean.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+head(data)
+```
+
+```{r}
+
+
+## Chọn cột cần thiết 
+reviews <- data.frame(sentence = data$review, sentiment = data$course_rating_int)
+
+## Loại bỏ dữ liệu rỗng
+reviews <- na.omit(reviews)
+
+head(reviews)
+
+# Làm sạch dữ liệu
+corpus <- Corpus(VectorSource(reviews))
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+corpus <- tm_map(corpus, stripWhitespace) # Loại bỏ khoảng trắng thừa
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("[^[:alnum:] ]", "", x))) # Loại bỏ ký tự đặc biệt
+corpus <- tm_map(corpus, content_transformer(lemmatize_strings)) # Chuẩn hóa từ vựng
+
+```
+
+
+
+```{r}
+# Tạo ma trận tài liệu
+dtm <- TermDocumentMatrix(corpus)
+matrix <- as.matrix(dtm)
+frequencies <- sort(rowSums(matrix), decreasing = TRUE)
+```
+
+```{r}
+# Tạo word cloud với gói wordcloud
+set.seed(5678) # Đặt seed để tái hiện kết quả
+wordcloud(
+  names(frequencies), freq = frequencies,
+  scale = c(4, 0.5),         # Kích thước từ lớn nhất và nhỏ nhất
+  min.freq = 2,              # Tần suất tối thiểu để hiển thị từ
+  max.words = 100,           # Số từ tối đa
+  random.order = FALSE,      # Hiển thị từ có tần suất cao nhất ở trung tâm
+  rot.per = 0.3,             # Phần trăm từ được xoay
+  colors = brewer.pal(9, "Dark2") # Bảng màu tươi sáng
+)
+```
+
+```{r}
+# Tạo word cloud với gói wordcloud2
+data_for_wordcloud <- data.frame(word = names(frequencies), freq = as.integer(frequencies))
+wordcloud2(data_for_wordcloud, size = 0.7, shape = "pentagon")
+```
+

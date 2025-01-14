@@ -1,0 +1,110 @@
+---
+title: "sentiment_analysis"
+author: "Lâm Hoài Kim Ngân"
+date: "2024-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load thư viện
+
+```{r}
+library(tidyverse)
+library(tm)
+library(caret)
+library(rpart)
+library(textstem)
+```
+
+## Load dữ liệu
+
+```{r}
+data <- read.csv("course_data_clean.csv", header = TRUE, sep = ",")
+```
+
+## Xem dữ liệu
+
+```{r}
+head(data)
+glimpse(data)
+```
+
+## Tiền xử lý dữ liệu
+
+```{r}
+## Chọn cột cần thiết 
+reviews <- data.frame(sentence = data$review, sentiment = data$course_rating_int)
+
+## Loại bỏ dữ liệu rỗng
+reviews <- na.omit(reviews)
+
+head(reviews)
+
+## Tạo corpus
+corpus <- Corpus(VectorSource(reviews$sentence))
+corpus <- tm_map(corpus, content_transformer(tolower)) # Chuyển về chữ thường
+corpus <- tm_map(corpus, removePunctuation) # Loại bỏ dấu câu
+corpus <- tm_map(corpus, removeNumbers) # Loại bỏ số
+corpus <- tm_map(corpus, removeWords, stopwords("en")) # Loại bỏ stopwords
+corpus <- tm_map(corpus, stripWhitespace) # Loại bỏ khoảng trắng thừa
+corpus <- tm_map(corpus, content_transformer(function(x) gsub("[^[:alnum:] ]", "", x))) # Loại bỏ ký tự đặc biệt
+corpus <- tm_map(corpus, content_transformer(lemmatize_strings)) # Chuẩn hóa từ vựng
+
+## Tạo Document Term Matrix
+dtm <- DocumentTermMatrix(corpus, control = list(weighting = weightTfIdf))
+dtm_data <- as.data.frame(as.matrix(dtm))
+dtm_data$sentiment <- as.factor(reviews$sentiment)
+```
+
+## Tạo tập train và tập test
+
+```{r}
+set.seed(123)
+train <- sample(1:nrow(dtm_data), 0.8*nrow(dtm_data))
+train_data <- dtm_data[train,]
+test_data <- dtm_data[-train,]
+```
+
+## Huấn luyện mô hình
+
+```{r}
+## Decision Tree
+tree_model <- rpart(sentiment ~ ., data = train_data, method = "class")
+summary(tree_model)
+```
+
+```{r}
+## SVM
+library(e1071)
+svm_model <- svm(sentiment ~ ., data = train_data, kernel = "linear", cost = 1, scale = FALSE)
+summary(svm_model)
+```
+
+## Dự đoán
+
+```{r}
+## Decision Tree
+test_pred_tree <- predict(tree_model, test_data, type = "class")
+```
+
+```{r}
+## SVM 
+test_pred_svm <- predict(svm_model, test_data)
+```
+
+## Đánh giá mô hình
+
+```{r}
+test_pred_tree <- factor(test_pred_tree) # Chuyển dữ liệu về factor
+levels(test_pred_tree) <- levels(test_data$sentiment) # Đặt lại level
+
+confusionMatrix(test_pred_tree, test_data$sentiment)
+```
+
+
+```{r}
+confusionMatrix(test_pred_svm, test_data$sentiment)
+```

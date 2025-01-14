@@ -1,0 +1,88 @@
+---
+title: "sentiment-test1"
+author: "Lâm Hoài Kim Ngân"
+date: "2024-11-04"
+output: html_document
+---
+
+```{r install-package}
+  # Tải các thư viện
+  library(tidyverse)
+  library(tidytext)
+  library(syuzhet)
+  library(ggplot2)
+  library(dplyr)
+  library(tm)
+```
+```{r read-file}
+  # Đọc dữ liệu từ tập tin CSV
+data <- read.csv("./course_data_clean.csv")
+data
+
+```
+```{r read-file}
+  # Đọc dữ liệu từ tập tin CSV
+data <- read.csv("./course_data_clean.csv")
+#lấy cột dữ liệu reviews
+texts <- data$reviews
+
+```
+
+```{r corpus}
+# Tạo corpus từ dữ liệu văn bản
+corpus <- VCorpus(VectorSource(texts))
+# Tiền xử lý văn bản
+corpus_clean <- corpus %>%
+  tm_map(content_transformer(tolower)) %>%       # Chuyển thành chữ thường
+  tm_map(removePunctuation) %>%                  # Loại bỏ dấu câu
+  tm_map(removeNumbers) %>%                      # Loại bỏ số
+  tm_map(removeWords, stopwords("english")) %>%  # Loại bỏ stopwords tiếng Anh
+  tm_map(stripWhitespace)                        # Loại bỏ khoảng trắng thừa
+
+# Chuyển đổi corpus thành dataframe
+clean_texts <- sapply(corpus_clean, as.character)
+
+```
+Có nhiều phương pháp để phân tích cảm xúc. Dưới đây là hai phương pháp phổ biến sử dụng các gói syuzhet và tidytext.
+
+a. Sử dụng gói syuzhet
+Gói syuzhet cung cấp các công cụ để trích xuất cảm xúc từ văn bản.
+```{r syuzhet}
+# Trích xuất cảm xúc sử dụng phương pháp NRC
+sentiments <- get_nrc_sentiment(clean_texts)
+
+# Tính tổng cảm xúc
+total_sentiments <- colSums(sentiments)
+
+# Hiển thị kết quả
+print(total_sentiments)
+
+```
+b. Sử dụng gói tidytext
+Gói tidytext cho phép phân tích cảm xúc theo cách tiếp cận tidy.
+```{r tydytext}
+# Trích xuất cảm xúc sử dụng phương pháp NRC
+sentiments <- get_nrc_sentiment(clean_texts)
+
+# Tính tổng cảm xúc
+total_sentiments <- colSums(sentiments)
+
+# Hiển thị kết quả
+print(total_sentiments)
+
+```
+5. Trực quan hóa kết quả
+Sau khi có kết quả phân tích cảm xúc, bạn có thể trực quan hóa chúng để dễ dàng hiểu và trình bày.
+```{r visuaize}
+# Trực quan hóa tổng cảm xúc sử dụng ggplot2
+sentiment_df <- data.frame(sentiment = names(total_sentiments), 
+                           count = as.numeric(total_sentiments))
+
+ggplot(sentiment_df, aes(x = sentiment, y = count, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Phân tích Cảm xúc", x = "Cảm xúc", y = "Số lượng") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
